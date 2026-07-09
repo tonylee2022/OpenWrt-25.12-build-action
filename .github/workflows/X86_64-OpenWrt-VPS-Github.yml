@@ -13,6 +13,8 @@ env:
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: X86_64
+  VPS_PROJECT_DIR: OPENWRT
+  VPS_RELEASE_DIR: 25.12
   TZ: Asia/Shanghai
 
 jobs:
@@ -175,6 +177,8 @@ jobs:
           [ -n "$VPS_HOST" ] || { echo "VPS_HOST is not configured" >&2; exit 1; }
           [ -n "$VPS_USER" ] || { echo "VPS_USER is not configured" >&2; exit 1; }
           [ -n "$VPS_TARGET_DIR" ] || { echo "VPS_TARGET_DIR is not configured" >&2; exit 1; }
+          [ -n "$VPS_PROJECT_DIR" ] || { echo "VPS_PROJECT_DIR is empty" >&2; exit 1; }
+          [ -n "$VPS_RELEASE_DIR" ] || { echo "VPS_RELEASE_DIR is empty" >&2; exit 1; }
           [ -n "$DEFAULT_VERSION" ] || { echo "DEFAULT_VERSION is empty" >&2; exit 1; }
           [ -n "$BRANCH_NAME" ] || { echo "BRANCH_NAME is empty" >&2; exit 1; }
           [[ "$VPS_USER" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid VPS_USER" >&2; exit 1; }
@@ -182,13 +186,15 @@ jobs:
           [[ "$VPS_TARGET_DIR" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "VPS_TARGET_DIR must be a safe absolute path" >&2; exit 1; }
           [ "$VPS_TARGET_DIR" != "/" ] || { echo "VPS_TARGET_DIR must not be /" >&2; exit 1; }
           [[ "$VPS_TARGET_DIR" != *".."* ]] || { echo "VPS_TARGET_DIR must not contain .." >&2; exit 1; }
+          [[ "$VPS_PROJECT_DIR" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid VPS_PROJECT_DIR" >&2; exit 1; }
+          [[ "$VPS_RELEASE_DIR" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid VPS_RELEASE_DIR" >&2; exit 1; }
           [[ "$DEFAULT_VERSION" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid DEFAULT_VERSION" >&2; exit 1; }
           [[ "$BRANCH_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid BRANCH_NAME" >&2; exit 1; }
           [ -d "$OPENWRT_PATH/bin" ] || { echo "Firmware bin directory does not exist" >&2; exit 1; }
 
           remote="$VPS_USER@$VPS_HOST"
           target_root="${VPS_TARGET_DIR%/}"
-          target_dir="$target_root/$BRANCH_NAME/$DEFAULT_VERSION"
+          target_dir="$target_root/$VPS_PROJECT_DIR/$VPS_RELEASE_DIR/$DEFAULT_VERSION"
           ssh -i ~/.ssh/id_rsa "$remote" "mkdir -p '$target_dir'"
           rsync -avz --progress --delete -e "ssh -i ~/.ssh/id_rsa" "$OPENWRT_PATH/bin/" "$remote:$target_dir/"
           # 同步后在 VPS 上生成网页目录、调整权限
@@ -231,7 +237,6 @@ jobs:
             - 源码分支: ${{ env.REPO_BRANCH }} ${{ env.DEFAULT_VERSION }}
             - LuCI版本: ${{ env.LUCI_BRANCH }}
             - 防火墙: firewall4 / nftables
-            - Transmission: OpenWrt 官方 feeds
             - 内核版本: ${{ env.KERNEL }}
             - 默认地址: 192.168.5.1
             - 默认密码: password
