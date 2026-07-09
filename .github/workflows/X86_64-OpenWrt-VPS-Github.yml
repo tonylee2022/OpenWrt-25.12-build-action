@@ -1,0 +1,295 @@
+name: X86_64 OpenWrt deploy VPS-Github
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  REPO_URL: https://github.com/openwrt/openwrt
+  REPO_BRANCH: openwrt-25.12
+  CONFIG_FILE: configs/x86_64.config
+  DIY_SCRIPT: diy-script.sh
+  CACHE_TOOLCHAIN: true
+  UPLOAD_BIN_DIR: false
+  FIRMWARE_RELEASE: true
+  FIRMWARE_TAG: X86_64
+  TZ: Asia/Shanghai
+
+jobs:
+  Build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check Server Performance
+        run: |
+          echo "警告⚠"
+          echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
+          echo -e "已知CPU型号(降序): 7763，8370C，8272CL，8171M，E5-2673\n"
+          echo "--------------------------CPU信息--------------------------"
+          echo "CPU物理数量: $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+          echo "CPU核心数量: $(nproc)"
+          echo -e "CPU型号信息:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+          echo "--------------------------内存信息--------------------------"
+          echo "已安装内存详细信息:"
+          echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+          echo "--------------------------硬盘信息--------------------------"
+          echo "硬盘数量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+      - name: Initialization Environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
+          sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
+          sudo -E apt-get -y update
+          sudo -E apt-get -y install $(curl -fsSL https://raw.githubusercontent.com/tonylee2022/openwrt_d/main/depends_ubuntu_2204.txt)
+          sudo -E systemctl daemon-reload
+          sudo -E apt-get -y autoremove --purge
+          sudo -E apt-get -y clean
+          sudo timedatectl set-timezone "$TZ"
+
+      - name: Combine Disks
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 1024
+          temp-reserve-mb: 100
+          root-reserve-mb: 1024
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Clone Source Code
+        run: |
+          df -hT $GITHUB_WORKSPACE
+          git clone $REPO_URL -b $REPO_BRANCH openwrt
+          cd openwrt
+          LUCI_FEED=$(grep -E '^src-git(-full)? luci ' feeds.conf.default | head -n1 || true)
+          [ -n "$LUCI_FEED" ] || { echo "Unable to determine LuCI feed" >&2; exit 1; }
+          if [[ "$LUCI_FEED" == *";"* ]]; then
+            LUCI_BRANCH="${LUCI_FEED##*;}"
+          else
+            LUCI_BRANCH="$REPO_BRANCH"
+          fi
+          BRANCH_NAME="$GITHUB_REF_NAME"
+          [[ "$BRANCH_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid branch name" >&2; exit 1; }
+          echo "LUCI_BRANCH=$LUCI_BRANCH" >> $GITHUB_ENV
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+          COMMIT_AUTHOR=$(git show -s --date=short --format="作者: %an")
+          echo "COMMIT_AUTHOR=$COMMIT_AUTHOR" >> $GITHUB_ENV
+          COMMIT_DATE=$(git show -s --date=short --format="时间: %ci")
+          echo "COMMIT_DATE=$COMMIT_DATE" >> $GITHUB_ENV
+          COMMIT_MESSAGE=$(git show -s --date=short --format="内容: %s")
+          echo "COMMIT_MESSAGE=$COMMIT_MESSAGE" >> $GITHUB_ENV
+          COMMIT_HASH=$(git show -s --date=short --format="hash: %H")
+          echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+
+      - name: Generate Variables
+        run: |
+          cp $CONFIG_FILE $OPENWRT_PATH/.config
+          cd $OPENWRT_PATH
+          make defconfig > /dev/null 2>&1
+          SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+          echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
+          DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
+          DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
+          DEFAULT_VERSION=$(awk '/VERSION_NUMBER:=\$\(if/{gsub(/.*,/,""); gsub(/\).*/,""); print}' "./include/version.mk")
+          echo "DEFAULT_VERSION=$DEFAULT_VERSION" >> $GITHUB_ENV
+
+      - name: Cache Toolchain
+        if: env.CACHE_TOOLCHAIN == 'true'
+        uses: HiGarfield/cachewrtbuild@main
+        with:
+          ccache: false
+          mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+          prefix: ${{ env.OPENWRT_PATH }}
+
+      - name: Install Feeds
+        run: |
+          cd $OPENWRT_PATH
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Load Custom Configuration
+        run: |
+          [ -e files ] && mv files $OPENWRT_PATH/files
+          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+          chmod +x $GITHUB_WORKSPACE/scripts/*.sh
+          chmod +x $DIY_SCRIPT
+          cd $OPENWRT_PATH
+          $GITHUB_WORKSPACE/$DIY_SCRIPT
+          $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
+
+      - name: Download DL Package
+        run: |
+          cd $OPENWRT_PATH
+          make defconfig
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile Firmware
+        id: compile
+        run: |
+          cd $OPENWRT_PATH
+          mkdir -p files/etc/uci-defaults
+          cp $GITHUB_WORKSPACE/scripts/init-settings.sh files/etc/uci-defaults/99-init-settings
+          echo -e "$(nproc) thread compile"
+          make -j$(nproc) || make -j1 || make -j1 V=s
+          echo "status=success" >> $GITHUB_OUTPUT
+          echo "DATE=$(date +"%Y-%m-%d %H")" >> $GITHUB_ENV
+          echo "FILE_DATE=$(date +"%Y.%m.%d.%H")" >> $GITHUB_ENV
+          echo "RELEASE_TAG=${BRANCH_NAME}-$(date +"%Y.%m.%d.%H")" >> $GITHUB_ENV
+
+      - name: Check Space Usage
+        if: (!cancelled())
+        run: df -hT
+
+      # 步骤4：设置 SSH 密钥用于同步到 VPS
+      - name: Setup SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          [ -n "$SSH_PRIVATE_KEY" ] || { echo "SSH_PRIVATE_KEY is not configured" >&2; exit 1; }
+          [ -n "$VPS_KNOWN_HOSTS" ] || { echo "VPS_KNOWN_HOSTS is not configured" >&2; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/known_hosts
+
+      # 步骤5：使用 rsync 同步 bin 目录到 VPS
+      - name: Sync bin directory to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_TARGET_DIR: ${{ secrets.VPS_TARGET_DIR }}
+        run: |
+          set -euo pipefail
+          [ -n "$VPS_HOST" ] || { echo "VPS_HOST is not configured" >&2; exit 1; }
+          [ -n "$VPS_USER" ] || { echo "VPS_USER is not configured" >&2; exit 1; }
+          [ -n "$VPS_TARGET_DIR" ] || { echo "VPS_TARGET_DIR is not configured" >&2; exit 1; }
+          [ -n "$DEFAULT_VERSION" ] || { echo "DEFAULT_VERSION is empty" >&2; exit 1; }
+          [ -n "$BRANCH_NAME" ] || { echo "BRANCH_NAME is empty" >&2; exit 1; }
+          [[ "$VPS_USER" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid VPS_USER" >&2; exit 1; }
+          [[ "$VPS_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "Invalid VPS_HOST" >&2; exit 1; }
+          [[ "$VPS_TARGET_DIR" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "VPS_TARGET_DIR must be a safe absolute path" >&2; exit 1; }
+          [ "$VPS_TARGET_DIR" != "/" ] || { echo "VPS_TARGET_DIR must not be /" >&2; exit 1; }
+          [[ "$VPS_TARGET_DIR" != *".."* ]] || { echo "VPS_TARGET_DIR must not contain .." >&2; exit 1; }
+          [[ "$DEFAULT_VERSION" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid DEFAULT_VERSION" >&2; exit 1; }
+          [[ "$BRANCH_NAME" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "Invalid BRANCH_NAME" >&2; exit 1; }
+          [ -d "$OPENWRT_PATH/bin" ] || { echo "Firmware bin directory does not exist" >&2; exit 1; }
+
+          remote="$VPS_USER@$VPS_HOST"
+          target_root="${VPS_TARGET_DIR%/}"
+          target_dir="$target_root/$BRANCH_NAME/$DEFAULT_VERSION"
+          ssh -i ~/.ssh/id_rsa "$remote" "mkdir -p '$target_dir'"
+          rsync -avz --progress --delete -e "ssh -i ~/.ssh/id_rsa" "$OPENWRT_PATH/bin/" "$remote:$target_dir/"
+          # 同步后在 VPS 上生成网页目录、调整权限
+          ssh -i ~/.ssh/id_rsa "$remote" "cd '$target_root' && openwrt-genindex && sudo chown -R www-data:www-data '$target_dir' && sudo chmod -R u=rwX,go=rX '$target_dir'"
+
+      - name: Organize Files
+        if: steps.compile.outputs.status == 'success'
+        run: |
+          cd $OPENWRT_PATH/bin/targets/*/*
+          cat sha256sums
+          cp $OPENWRT_PATH/.config build.config
+          mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
+          tar -zcf Packages.tar.gz packages
+          rm -rf packages feeds.buildinfo version.buildinfo
+          echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
+          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
+      - name: Upload Firmware To Artifact
+        if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+          path: ${{ env.FIRMWARE_PATH }}
+
+      - name: Upload Firmware To Release
+        id: release
+        if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          name: R${{ env.FILE_DATE }} for ${{ env.BRANCH_NAME }}
+          allowUpdates: true
+          tag: ${{ env.RELEASE_TAG }}
+          token: ${{ secrets.GH_TOKEN }}
+          artifacts: ${{ env.FIRMWARE_PATH }}/*
+          body: |
+            **OpenWrt 25.12 Firmware for ${{ env.FIRMWARE_TAG }}**
+            ### 固件信息
+            - 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+            - 固件源码: ${{ env.REPO_URL }}
+            - 源码分支: ${{ env.REPO_BRANCH }} ${{ env.DEFAULT_VERSION }}
+            - LuCI版本: ${{ env.LUCI_BRANCH }}
+            - 防火墙: firewall4 / nftables
+            - Transmission: OpenWrt 官方 feeds
+            - 内核版本: ${{ env.KERNEL }}
+            - 默认地址: 192.168.5.1
+            - 默认密码: password
+            ### 固件版本
+            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+            - ${{ env.COMMIT_AUTHOR }}
+            - ${{ env.COMMIT_DATE }}
+            - ${{ env.COMMIT_MESSAGE }}
+            - ${{ env.COMMIT_HASH }}
+
+      - name: Remove old Releases
+        if: steps.release.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          set -euo pipefail
+          prefix="${BRANCH_NAME}-"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases" --jq '.[] | [.created_at, .id, .tag_name] | @tsv' |
+            awk -F '\t' -v prefix="$prefix" 'index($3, prefix) == 1' |
+            sort -r -k1,1 |
+            tail -n +5 |
+            while IFS=$'\t' read -r created_at release_id tag_name; do
+              [ -n "$release_id" ] || continue
+              echo "Deleting old release $tag_name"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/$release_id"
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$tag_name" || true
+            done
+
+      - name: Notify on Success
+        if: success()
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            编译发布成功！
+            工作流: ${{ github.workflow }}
+            用户名: ${{ github.actor }}
+            仓库: ${{ github.repository }}
+            固件源码: ${{ env.REPO_URL }}
+            仓库分支: ${{ env.BRANCH_NAME }}
+            源码分支: ${{ env.REPO_BRANCH }}
+            OpenWrt源码: ${{ env.DEFAULT_VERSION }}
+            内核版本: ${{ env.KERNEL }}
+            LuCI版本: ${{ env.LUCI_BRANCH }}
+            Release标签: ${{ env.RELEASE_TAG }}
+            Commit: ${{ github.sha }}
+            已发布到 VPS 和 GitHub！
+
+      - name: Notify on Failure
+        if: failure()
+        uses: appleboy/telegram-action@v1.0.1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            编译或发布失败！
+            工作流: ${{ github.workflow }}
+            仓库: ${{ github.repository }}
+            仓库分支: ${{ github.ref_name }}
+            LuCI版本: ${{ env.LUCI_BRANCH }}
+            Commit: ${{ github.sha }}
+            VPS 和 GitHub 发布结果未确认，请检查工作流日志。
