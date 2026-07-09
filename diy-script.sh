@@ -37,65 +37,20 @@ EOF
 # TTYD root 自动登录
 [ ! -f feeds/packages/utils/ttyd/files/ttyd.config ] || sed -i 's#/bin/login#/bin/login -f root#g' feeds/packages/utils/ttyd/files/ttyd.config
 
-# 移除需要由第三方仓库替换的冲突包。Transmission 和 firewall4 使用 OpenWrt 25.12 官方源。
+# 移除官方 feeds 中需要由第三方仓库替换的冲突包。Transmission 和 firewall4 使用 OpenWrt 25.12 官方源。
 remove_paths \
-  feeds/packages/net/chinadns-ng \
-  feeds/packages/net/dns2socks \
-  feeds/packages/net/dns2tcp \
-  feeds/packages/net/geoview \
-  feeds/packages/net/gn \
-  feeds/packages/net/hysteria \
-  feeds/packages/net/ipt2socks \
   feeds/packages/net/microsocks \
-  feeds/packages/net/naiveproxy \
-  feeds/packages/net/shadowsocks-libev \
-  feeds/packages/net/shadowsocks-rust \
-  feeds/packages/net/shadowsocksr-libev \
-  feeds/packages/net/simple-obfs \
   feeds/packages/net/sing-box \
-  feeds/packages/net/ssocks \
-  feeds/packages/net/tcping \
-  feeds/packages/net/trojan-plus \
-  feeds/packages/net/tuic-client \
   feeds/packages/net/v2ray-core \
   feeds/packages/net/v2ray-geodata \
-  feeds/packages/net/v2ray-plugin \
   feeds/packages/net/xray-core \
-  feeds/packages/net/xray-plugin \
-  feeds/luci/themes/luci-theme-argon \
-  feeds/luci/applications/luci-app-argon-config \
-  feeds/luci/applications/luci-app-passwall \
-  feeds/luci/applications/luci-app-passwall2 \
-  feeds/luci/applications/luci-app-openclash \
-  feeds/luci/applications/luci-app-netdata \
-  package/feeds/packages/chinadns-ng \
-  package/feeds/packages/dns2socks \
-  package/feeds/packages/dns2tcp \
-  package/feeds/packages/geoview \
-  package/feeds/packages/gn \
-  package/feeds/packages/hysteria \
-  package/feeds/packages/ipt2socks \
+  feeds/luci/applications/luci-app-adguardhome \
   package/feeds/packages/microsocks \
-  package/feeds/packages/naiveproxy \
-  package/feeds/packages/shadowsocks-libev \
-  package/feeds/packages/shadowsocks-rust \
-  package/feeds/packages/shadowsocksr-libev \
-  package/feeds/packages/simple-obfs \
   package/feeds/packages/sing-box \
-  package/feeds/packages/ssocks \
-  package/feeds/packages/tcping \
-  package/feeds/packages/trojan-plus \
-  package/feeds/packages/tuic-client \
   package/feeds/packages/v2ray-core \
   package/feeds/packages/v2ray-geodata \
-  package/feeds/packages/v2ray-plugin \
   package/feeds/packages/xray-core \
-  package/feeds/packages/xray-plugin \
-  package/feeds/luci/luci-app-argon-config \
-  package/feeds/luci/luci-app-passwall \
-  package/feeds/luci/luci-app-passwall2 \
-  package/feeds/luci/luci-app-openclash \
-  package/feeds/luci/luci-app-netdata
+  package/feeds/luci/luci-app-adguardhome
 
 # AdGuardHome：仅装 kenzok8 LuCI，核心由界面在线下载。
 git_sparse_clone main https://github.com/kenzok8/small-package luci-app-adguardhome
@@ -108,9 +63,18 @@ git clone --depth=1 https://github.com/sirpdboy/luci-app-advanced package/luci-a
 git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-app-netdata
 git clone --depth=1 https://github.com/tonylee2022/luci-app-nezha-agent package/luci-app-nezha-agent
 
+# OpenWrt 25.12 官方 feeds 未提供的 LEDE LuCI 应用。
+git_sparse_clone openwrt-25.12 https://github.com/coolsnowwolf/luci \
+  applications/luci-app-diskman \
+  applications/luci-app-openvpn-server \
+  applications/luci-app-ramfree \
+  applications/luci-app-syncdial \
+  applications/luci-app-zerotier
+
 # 代理插件，优先使用 nftables/firewall4 方案。
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall-packages package/openwrt-passwall
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall package/luci-app-passwall
+[ ! -f package/luci-app-passwall/luci-app-passwall/Makefile ] || sed -i 's/select PACKAGE_nftables$/select PACKAGE_nftables-json/' package/luci-app-passwall/luci-app-passwall/Makefile
 git clone --depth=1 https://github.com/vernesong/OpenClash package/openclash-luci
 
 # Themes
