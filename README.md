@@ -1,4 +1,4 @@
-# OpenWrt-25.12-build-action
+# OpenWrt-build-action
 
 本仓库用于基于官方 OpenWrt `openwrt-25.12` 源码编译 x86_64 固件，作为独立仓库维护。
 
