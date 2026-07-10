@@ -1,13 +1,13 @@
 # OpenWrt-build-action
 
-本仓库用于基于官方 OpenWrt `openwrt-25.12` 源码编译 x86_64 固件，作为独立仓库维护。
+本仓库用于基于官方 OpenWrt `v25.12.5` 稳定版源码编译 x86_64 固件，作为独立仓库维护。
 
 构建、配置整理、GitHub Release 发布和 VPS 上传均由 GitHub Actions 完成。
 
 ## 固件配置
 
 - 源码仓库：`https://github.com/openwrt/openwrt`
-- 源码分支：`openwrt-25.12`
+- 源码版本：`v25.12.5`
 - 目标平台：`x86_64`
 - 配置文件：`configs/x86_64.config`
 - 自定义脚本：`diy-script.sh`
