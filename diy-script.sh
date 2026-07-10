@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 remove_paths() {
   for path in "$@"; do
     [ ! -e "$path" ] || rm -rf "$path"
@@ -22,14 +24,13 @@ git_sparse_clone() {
 }
 
 # 默认 LAN IP
-sed -i '/^CONFIG_IMAGEOPT=/d; /^# CONFIG_IMAGEOPT is not set/d; /^CONFIG_PREINITOPT=/d; /^# CONFIG_PREINITOPT is not set/d; /^CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=/d; /^CONFIG_TARGET_PREINIT_IP=/d; /^CONFIG_TARGET_PREINIT_BROADCAST=/d; /^CONFIG_VMDK_IMAGES=/d; /^# CONFIG_VMDK_IMAGES is not set/d' .config
+sed -i '/^CONFIG_IMAGEOPT=/d; /^# CONFIG_IMAGEOPT is not set/d; /^CONFIG_PREINITOPT=/d; /^# CONFIG_PREINITOPT is not set/d; /^CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=/d; /^CONFIG_TARGET_PREINIT_IP=/d; /^CONFIG_TARGET_PREINIT_BROADCAST=/d' .config
 cat >> .config <<'EOF'
 CONFIG_IMAGEOPT=y
 CONFIG_PREINITOPT=y
 CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=y
 CONFIG_TARGET_PREINIT_IP="192.168.5.3"
 CONFIG_TARGET_PREINIT_BROADCAST="192.168.5.255"
-CONFIG_VMDK_IMAGES=y
 EOF
 
 # 默认 shell 为 zsh
@@ -53,8 +54,11 @@ remove_paths \
   package/feeds/packages/xray-core \
   package/feeds/luci/luci-app-adguardhome
 
-# AdGuardHome：仅装 kenzok8 LuCI，核心由界面在线下载。
-git_sparse_clone main https://github.com/kenzok8/small-package luci-app-adguardhome
+# kenzok8 插件：AdGuardHome 仅装 LuCI，核心由界面在线下载。
+git_sparse_clone main https://github.com/kenzok8/small-package \
+  luci-app-adguardhome \
+  luci-theme-glass
+[ ! -f "$script_dir/patches/luci-theme-glass/po/zh_Hans/glass.po" ] || install -m 0644 "$script_dir/patches/luci-theme-glass/po/zh_Hans/glass.po" package/luci-theme-glass/po/zh_Hans/glass.po
 
 # 常用插件
 git clone --depth=1 https://github.com/tonylee2022/luci-app-openclaw package/luci-app-openclaw
@@ -75,7 +79,7 @@ git_sparse_clone openwrt-25.12 https://github.com/coolsnowwolf/luci \
 # 代理插件，优先使用 nftables/firewall4 方案。
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall-packages package/openwrt-passwall
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall package/luci-app-passwall
-[ ! -f package/luci-app-passwall/luci-app-passwall/Makefile ] || sed -i 's/select PACKAGE_nftables$/select PACKAGE_nftables-json/' package/luci-app-passwall/luci-app-passwall/Makefile
+[ ! -f package/openwrt-passwall/shadowsocksr-libev/Makefile ] || sed -i 's#PKG_SOURCE_URL:=https://github.com/shadowsocksrr/shadowsocksr-libev$#PKG_SOURCE_URL:=https://github.com/shadowsocksrr/shadowsocksr-libev.git#' package/openwrt-passwall/shadowsocksr-libev/Makefile
 git clone --depth=1 https://github.com/vernesong/OpenClash package/openclash-luci
 
 # Themes
@@ -100,6 +104,3 @@ find package/*/ -maxdepth 2 -path "*/Makefile" -print0 | xargs -0 -r sed -i 's#.
 find package/*/ -maxdepth 2 -path "*/Makefile" -print0 | xargs -0 -r sed -i 's#../../lang/golang/golang-package.mk#$(TOPDIR)/feeds/packages/lang/golang/golang-package.mk#g'
 find package/*/ -maxdepth 2 -path "*/Makefile" -print0 | xargs -0 -r sed -i 's#PKG_SOURCE_URL:=@GHREPO#PKG_SOURCE_URL:=https://github.com#g'
 find package/*/ -maxdepth 2 -path "*/Makefile" -print0 | xargs -0 -r sed -i 's#PKG_SOURCE_URL:=@GHCODELOAD#PKG_SOURCE_URL:=https://codeload.github.com#g'
-
-./scripts/feeds update -a
-./scripts/feeds install -a

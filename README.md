@@ -1,6 +1,6 @@
 # OpenWrt-25.12-build-action
 
-本仓库用于基于官方 OpenWrt `openwrt-25.12` 源码编译 x86_64 固件。项目从 `LEDE-build-action` 复制迁移而来，但作为独立仓库维护，不依赖 Lean LEDE 源码。
+本仓库用于基于官方 OpenWrt `openwrt-25.12` 源码编译 x86_64 固件，作为独立仓库维护。
 
 构建、配置整理、GitHub Release 发布和 VPS 上传均由 GitHub Actions 完成。
 
@@ -11,17 +11,16 @@
 - 目标平台：`x86_64`
 - 配置文件：`configs/x86_64.config`
 - 自定义脚本：`diy-script.sh`
-- 默认 LAN 地址：`192.168.5.1`
+- 默认 LAN 地址：`192.168.5.3`
 - 默认 Shell：`zsh`
 - TTYD：root 自动登录
 - 默认主题：Argon
 - 防火墙：`firewall4` / nftables
-- Transmission：使用 OpenWrt 25.12 官方 feeds，不拉取旧分支或第三方版本
 
-当前配置尽量保留原 LEDE 自动化中的常用组件，包括：
+当前配置包含以下常用组件：
 
 - 网络与代理：AdGuardHome、OpenClash、PassWall、SmartDNS、MWAN3、OpenVPN、ZeroTier、Cloudflared
-- 系统与存储：Docker、DiskMan、Samba4、Transmission、TTYD、Zsh
+- 系统与存储：Docker、DiskMan、KSMBD 网络共享、Transmission、TTYD、Zsh
 - 状态与工具：Netdata、网络测速、在线用户、哪吒代理、OpenClaw、高级设置、定时重拨、释放内存、关机
 
 第三方插件会随上游仓库变化而变化，实际生成的软件包以当次编译日志和 `configs/x86_64.config` 为准。
