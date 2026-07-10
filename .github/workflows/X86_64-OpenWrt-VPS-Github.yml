@@ -211,8 +211,18 @@ jobs:
           cd $OPENWRT_PATH/bin/targets/*/*
           cat sha256sums
           cp $OPENWRT_PATH/.config build.config
-          mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
-          tar -zcf Packages.tar.gz packages
+          package_archive="$(mktemp -d)"
+          mkdir -p "$package_archive/packages"
+          package_sources=()
+          [ -d packages ] && package_sources+=(packages)
+          [ -d "$OPENWRT_PATH/bin/packages" ] && package_sources+=("$OPENWRT_PATH/bin/packages")
+          if [ ${#package_sources[@]} -eq 0 ] || ! find "${package_sources[@]}" -type f -name '*.apk' -print -quit | grep -q .; then
+            echo "No package .apk files found in OpenWrt package output directories" >&2
+            exit 1
+          fi
+          find "${package_sources[@]}" -type f -name '*.apk' -exec cp -f {} "$package_archive/packages/" \;
+          tar -zcf Packages.tar.gz -C "$package_archive" packages
+          rm -rf "$package_archive"
           rm -rf packages feeds.buildinfo version.buildinfo
           echo "KERNEL=$(cat *.manifest | grep ^kernel | cut -d- -f2 | tr -d ' ')" >> $GITHUB_ENV
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
