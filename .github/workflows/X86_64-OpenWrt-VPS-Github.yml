@@ -236,7 +236,7 @@ jobs:
             - LuCI版本: ${{ env.LUCI_BRANCH }}
             - 防火墙: firewall4 / nftables
             - 内核版本: ${{ env.KERNEL }}
-            - 默认地址: 192.168.5.1
+            - 默认地址: 192.168.5.3
             - 默认密码: password
             ### 固件版本
             - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录

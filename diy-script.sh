@@ -22,13 +22,14 @@ git_sparse_clone() {
 }
 
 # 默认 LAN IP
-sed -i '/^CONFIG_IMAGEOPT=/d; /^# CONFIG_IMAGEOPT is not set/d; /^CONFIG_PREINITOPT=/d; /^# CONFIG_PREINITOPT is not set/d; /^CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=/d; /^CONFIG_TARGET_PREINIT_IP=/d; /^CONFIG_TARGET_PREINIT_BROADCAST=/d' .config
+sed -i '/^CONFIG_IMAGEOPT=/d; /^# CONFIG_IMAGEOPT is not set/d; /^CONFIG_PREINITOPT=/d; /^# CONFIG_PREINITOPT is not set/d; /^CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=/d; /^CONFIG_TARGET_PREINIT_IP=/d; /^CONFIG_TARGET_PREINIT_BROADCAST=/d; /^CONFIG_VMDK_IMAGES=/d; /^# CONFIG_VMDK_IMAGES is not set/d' .config
 cat >> .config <<'EOF'
 CONFIG_IMAGEOPT=y
 CONFIG_PREINITOPT=y
 CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=y
-CONFIG_TARGET_PREINIT_IP="192.168.5.1"
+CONFIG_TARGET_PREINIT_IP="192.168.5.3"
 CONFIG_TARGET_PREINIT_BROADCAST="192.168.5.255"
+CONFIG_VMDK_IMAGES=y
 EOF
 
 # 默认 shell 为 zsh
@@ -60,7 +61,7 @@ git clone --depth=1 https://github.com/tonylee2022/luci-app-openclaw package/luc
 git clone --depth=1 https://github.com/sirpdboy/luci-app-poweroffdevice package/luci-app-poweroffdevice
 git clone --depth=1 https://github.com/sirpdboy/netspeedtest package/netspeedtest-luci
 git clone --depth=1 https://github.com/sirpdboy/luci-app-advanced package/luci-app-advanced
-git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-app-netdata
+git_sparse_clone main https://github.com/sirpdboy/luci-app-netdata luci-app-netdata
 git clone --depth=1 https://github.com/tonylee2022/luci-app-nezha-agent package/luci-app-nezha-agent
 
 # OpenWrt 25.12 官方 feeds 未提供的 LEDE LuCI 应用。
