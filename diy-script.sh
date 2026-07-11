@@ -89,14 +89,14 @@ git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/l
 git_sparse_clone main https://github.com/haiibo/packages luci-app-onliner
 [ ! -f package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh ] || chmod 755 package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
 
-# 固件版本标识
-openwrt_version="$(awk '/^VERSION_NUMBER:=\$\(if/{gsub(/.*,/ , ""); gsub(/\).*/, ""); print; exit}' include/version.mk)"
-[ -n "$openwrt_version" ] || { echo "Unable to detect OpenWrt version" >&2; exit 1; }
-sed -i "s#^VERSION_DIST:=.*#VERSION_DIST:=\$(if \$(VERSION_DIST),\$(VERSION_DIST),OpenWrt ${openwrt_version} by TonyLee)#" include/version.mk
+# 固件版本标识。状态页会追加 VERSION_NUMBER / REVISION，这里只保留发行名，避免版本号重复。
+sed -i "s#^VERSION_DIST:=.*#VERSION_DIST:=\$(if \$(VERSION_DIST),\$(VERSION_DIST),OpenWrt by TonyLee)#" include/version.mk
 
-# LuCI 版本保留 Git 日期，去掉最后的提交哈希。
-[ ! -f feeds/luci/modules/luci-base/src/Makefile ] || sed -i "s#revision = '\$(LUCI_VERSION)'#revision = '\$(shell echo \$(LUCI_VERSION) | rev | cut -d- -f2- | rev)'#" feeds/luci/modules/luci-base/src/Makefile
-[ ! -f feeds/luci/modules/luci-lua-runtime/src/mkversion.sh ] || sed -i 's/luciversion = "${2:-Git}"/luciversion = "${2%-*}"/' feeds/luci/modules/luci-lua-runtime/src/mkversion.sh
+# LuCI 版本去掉 detached/head 前缀和最后的提交哈希，只保留形如 26.180.75667~128a781 的短版本。
+[ ! -f feeds/luci/modules/luci-base/src/Makefile ] || sed -i "s#revision = '\$(LUCI_VERSION)'#revision = '\$(shell echo \$(LUCI_VERSION) | sed 's/.* branch //' | rev | cut -d- -f2- | rev)'#" feeds/luci/modules/luci-base/src/Makefile
+[ ! -f feeds/luci/modules/luci-base/src/Makefile ] || sed -i "s#branch = '\$(LUCI_GITBRANCH)'#branch = 'LuCI'#" feeds/luci/modules/luci-base/src/Makefile
+[ ! -f feeds/luci/modules/luci-lua-runtime/src/mkversion.sh ] || sed -i 's#^luciname    = .*#luciname    = "LuCI"#' feeds/luci/modules/luci-lua-runtime/src/mkversion.sh
+[ ! -f feeds/luci/modules/luci-lua-runtime/src/mkversion.sh ] || sed -i 's#^luciversion = .*#luciversion = "$(printf '"'"'%s\\n'"'"' "${2:-Git}" | sed '"'"'s/.* branch //'"'"' | rev | cut -d- -f2- | rev)"#' feeds/luci/modules/luci-lua-runtime/src/mkversion.sh
 
 # 兼容部分第三方 Makefile 的相对路径写法。
 find package/*/ -maxdepth 2 -path "*/Makefile" -print0 | xargs -0 -r sed -i 's#../../luci.mk#$(TOPDIR)/feeds/luci/luci.mk#g'

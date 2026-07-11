@@ -281,12 +281,12 @@ jobs:
           token: ${{ secrets.GH_TOKEN }}
           artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
-            **OpenWrt 25.12 Firmware for ${{ env.FIRMWARE_TAG }}**
+            **OpenWrt ${{ env.DEFAULT_VERSION }} Firmware for ${{ env.FIRMWARE_TAG }}**
             ### 固件信息
             - 平台架构: ${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
             - 固件源码: ${{ env.REPO_URL }}
-            - 源码版本: ${{ env.REPO_BRANCH }} ${{ env.DEFAULT_VERSION }}
-            - LuCI版本: ${{ env.LUCI_BRANCH }}
+            - OpenWrt版本: ${{ env.DEFAULT_VERSION }}
+            - LuCI源分支: ${{ env.LUCI_BRANCH }}
             - 防火墙: firewall4 / nftables
             - 内核版本: ${{ env.KERNEL }}
             - 默认地址: 192.168.5.3
@@ -329,10 +329,9 @@ jobs:
             仓库: ${{ github.repository }}
             固件源码: ${{ env.REPO_URL }}
             仓库分支: ${{ env.BRANCH_NAME }}
-            源码版本: ${{ env.REPO_BRANCH }}
-            OpenWrt源码: ${{ env.DEFAULT_VERSION }}
+            OpenWrt版本: ${{ env.DEFAULT_VERSION }}
             内核版本: ${{ env.KERNEL }}
-            LuCI版本: ${{ env.LUCI_BRANCH }}
+            LuCI源分支: ${{ env.LUCI_BRANCH }}
             Release标签: ${{ env.RELEASE_TAG }}
             Commit: ${{ github.sha }}
             已发布到 VPS 和 GitHub！
@@ -348,7 +347,7 @@ jobs:
             工作流: ${{ github.workflow }}
             仓库: ${{ github.repository }}
             仓库分支: ${{ github.ref_name }}
-            LuCI版本: ${{ env.LUCI_BRANCH }}
+            LuCI源分支: ${{ env.LUCI_BRANCH }}
             Commit: ${{ github.sha }}
             VPS 和 GitHub 发布结果未确认，请检查工作流日志。
 
