@@ -137,12 +137,12 @@ jobs:
           $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
 
       - name: Download DL Package
+        timeout-minutes: 45
         run: |
           cd $OPENWRT_PATH
           make defconfig
-          make download -j8 || {
-            echo "::warning::Parallel download failed; retrying shadowsocksr-libev with verbose serial download"
-            make package/openwrt-passwall/shadowsocksr-libev/download -j1 V=s
+          make download -j8 V=s || {
+            echo "::warning::Parallel download failed; retrying all downloads serially"
             make download -j1 V=s
           }
           find dl -size -1024c -exec ls -l {} \;

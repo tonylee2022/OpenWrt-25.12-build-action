@@ -79,7 +79,6 @@ git_sparse_clone openwrt-25.12 https://github.com/coolsnowwolf/luci \
 # 代理插件，优先使用 nftables/firewall4 方案。
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall-packages package/openwrt-passwall
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall package/luci-app-passwall
-[ ! -f package/openwrt-passwall/shadowsocksr-libev/Makefile ] || sed -i 's#PKG_SOURCE_URL:=https://github.com/shadowsocksrr/shadowsocksr-libev$#PKG_SOURCE_URL:=https://github.com/shadowsocksrr/shadowsocksr-libev.git#' package/openwrt-passwall/shadowsocksr-libev/Makefile
 git clone --depth=1 https://github.com/vernesong/OpenClash package/openclash-luci
 
 # Themes
