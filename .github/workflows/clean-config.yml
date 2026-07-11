@@ -99,7 +99,7 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP_RUNS: 3
+          KEEP_RUNS: 1
         run: |
           set -euo pipefail
           workflow_file="$(basename "${GITHUB_WORKFLOW_REF%@*}")"

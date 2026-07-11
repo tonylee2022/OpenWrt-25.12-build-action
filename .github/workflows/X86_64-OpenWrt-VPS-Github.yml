@@ -144,7 +144,7 @@ jobs:
           for i in 1 2 3; do
             echo "Download attempt $i/3"
             rc=0
-            make download -j8 V=s || rc=$?
+            make download -j8 || rc=$?
 
             small_files="$(find dl -type f -size -1024c -print)"
             if [ -n "$small_files" ]; then
@@ -344,7 +344,7 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          KEEP_RUNS: 3
+          KEEP_RUNS: 1
         run: |
           set -euo pipefail
           workflow_file="$(basename "${GITHUB_WORKFLOW_REF%@*}")"
