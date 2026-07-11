@@ -278,6 +278,7 @@ jobs:
           name: R${{ env.FILE_DATE }} for ${{ env.BRANCH_NAME }}
           allowUpdates: true
           tag: ${{ env.RELEASE_TAG }}
+          commit: ${{ github.sha }}
           token: ${{ secrets.GH_TOKEN }}
           artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
