@@ -39,7 +39,15 @@ jobs:
           echo "--------------------------硬盘信息--------------------------"
           echo "硬盘数量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
-      - name: Initialization Environment
+      - name: Combine Disks
+        uses: easimon/maximize-build-space@master
+        with:
+          swap-size-mb: 1024
+          temp-reserve-mb: 1024
+          root-reserve-mb: 4096
+
+      - name: Clean Runner Space
+        timeout-minutes: 20
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -47,20 +55,19 @@ jobs:
           sudo find /etc/apt/sources.list.d -type f ! -name 'ubuntu.sources' -delete
           removable_packages="$(dpkg-query -W -f='${binary:Package}\n' | grep -Ex 'azure-cli|google-cloud-cli|google-chrome-stable|firefox|powershell|clang(-tools|-tidy)?-(16|17)|llvm-(16|17)(-dev|-linker-tools|-runtime|-tools)?' || true)"
           [ -z "$removable_packages" ] || sudo -E apt-get -y purge $removable_packages
-          sudo -E apt-get -y update
+
+      - name: Install Build Dependencies
+        timeout-minutes: 20
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get -o Acquire::Retries=3 -y update
           sudo -E apt-get -y install build-essential clang flex bison g++ gawk \
             gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
             python3-setuptools qemu-utils rsync swig unzip zlib1g-dev file wget subversion
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get -y clean
           sudo timedatectl set-timezone "$TZ"
-
-      - name: Combine Disks
-        uses: easimon/maximize-build-space@master
-        with:
-          swap-size-mb: 1024
-          temp-reserve-mb: 1024
-          root-reserve-mb: 4096
 
       - name: Checkout
         uses: actions/checkout@v6
