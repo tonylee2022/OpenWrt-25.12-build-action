@@ -137,16 +137,33 @@ jobs:
           $GITHUB_WORKSPACE/scripts/preset-terminal-tools.sh
 
       - name: Download DL Package
-        timeout-minutes: 45
+        timeout-minutes: 20
         run: |
           cd $OPENWRT_PATH
           make defconfig
-          make download -j8 V=s || {
-            echo "::warning::Parallel download failed; retrying all downloads serially"
-            make download -j1 V=s
-          }
-          find dl -size -1024c -exec ls -l {} \;
-          find dl -size -1024c -exec rm -f {} \;
+          for i in 1 2 3; do
+            echo "Download attempt $i/3"
+            rc=0
+            make download -j8 V=s || rc=$?
+
+            small_files="$(find dl -type f -size -1024c -print)"
+            if [ -n "$small_files" ]; then
+              echo "::warning::Tiny download files found; removing:"
+              printf '%s\n' "$small_files" | xargs -r ls -l
+              printf '%s\n' "$small_files" | xargs -r rm -f
+              rc=1
+            fi
+
+            if [ "$rc" = "0" ]; then
+              echo "Download completed successfully."
+              exit 0
+            fi
+
+            if [ "$i" = "3" ]; then
+              echo "::error::Download failed after 3 attempts"
+              exit "$rc"
+            fi
+          done
 
       - name: Compile Firmware
         id: compile
