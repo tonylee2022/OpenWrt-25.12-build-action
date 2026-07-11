@@ -110,13 +110,17 @@ jobs:
           DEFAULT_VERSION=$(awk '/VERSION_NUMBER:=\$\(if/{gsub(/.*,/,""); gsub(/\).*/,""); print}' "./include/version.mk")
           echo "DEFAULT_VERSION=$DEFAULT_VERSION" >> $GITHUB_ENV
 
-      - name: Cache Toolchain
+      - name: Restore Toolchain Cache
+        id: cache-toolchain-restore
         if: env.CACHE_TOOLCHAIN == 'true'
-        uses: HiGarfield/cachewrtbuild@main
+        uses: actions/cache/restore@v6
         with:
-          ccache: false
-          mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-          prefix: ${{ env.OPENWRT_PATH }}
+          path: |
+            ${{ env.OPENWRT_PATH }}/staging_dir/host*
+            ${{ env.OPENWRT_PATH }}/staging_dir/toolchain-*
+            ${{ env.OPENWRT_PATH }}/build_dir/host*
+            ${{ env.OPENWRT_PATH }}/build_dir/toolchain-*
+          key: ${{ runner.os }}-${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-toolchain
 
       - name: Install Feeds
         run: |
@@ -174,6 +178,17 @@ jobs:
           echo "DATE=$(date +"%Y-%m-%d %H")" >> $GITHUB_ENV
           echo "FILE_DATE=$(date +"%Y.%m.%d.%H")" >> $GITHUB_ENV
           echo "RELEASE_TAG=${BRANCH_NAME}-$(date +"%Y.%m.%d.%H")" >> $GITHUB_ENV
+
+      - name: Save Toolchain Cache
+        if: env.CACHE_TOOLCHAIN == 'true' && steps.cache-toolchain-restore.outputs.cache-hit != 'true' && steps.compile.outputs.status == 'success'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ env.OPENWRT_PATH }}/staging_dir/host*
+            ${{ env.OPENWRT_PATH }}/staging_dir/toolchain-*
+            ${{ env.OPENWRT_PATH }}/build_dir/host*
+            ${{ env.OPENWRT_PATH }}/build_dir/toolchain-*
+          key: ${{ steps.cache-toolchain-restore.outputs.cache-primary-key }}
 
       - name: Check Space Usage
         if: (!cancelled())
