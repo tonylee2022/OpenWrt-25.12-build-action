@@ -65,7 +65,7 @@ git clone --depth=1 https://github.com/tonylee2022/luci-app-openclaw package/luc
 git clone --depth=1 https://github.com/sirpdboy/luci-app-poweroffdevice package/luci-app-poweroffdevice
 git clone --depth=1 https://github.com/sirpdboy/netspeedtest package/netspeedtest-luci
 git clone --depth=1 https://github.com/sirpdboy/luci-app-advanced package/luci-app-advanced
-git_sparse_clone main https://github.com/sirpdboy/luci-app-netdata luci-app-netdata
+# git_sparse_clone main https://github.com/sirpdboy/luci-app-netdata luci-app-netdata
 git clone --depth=1 https://github.com/tonylee2022/luci-app-nezha-agent package/luci-app-nezha-agent
 
 # OpenWrt 25.12 官方 feeds 未提供的 LEDE LuCI 应用。
@@ -73,8 +73,8 @@ git_sparse_clone openwrt-25.12 https://github.com/coolsnowwolf/luci \
   applications/luci-app-diskman \
   applications/luci-app-openvpn-server \
   applications/luci-app-ramfree \
-  applications/luci-app-syncdial \
   applications/luci-app-zerotier
+# applications/luci-app-syncdial
 
 # 代理插件，优先使用 nftables/firewall4 方案。
 git clone --depth=1 https://github.com/Openwrt-Passwall/openwrt-passwall-packages package/openwrt-passwall
