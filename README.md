@@ -12,6 +12,7 @@
 - 配置文件：`configs/x86_64.config`
 - 自定义脚本：`diy-script.sh`
 - 默认 LAN 地址：`192.168.5.3`
+- root / LuCI 默认密码：空
 - 默认 Shell：`zsh`
 - TTYD：root 自动登录
 - 默认主题：Argon

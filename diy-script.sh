@@ -23,16 +23,6 @@ git_sparse_clone() {
   rm -rf "$repodir"
 }
 
-# 默认 LAN IP
-sed -i '/^CONFIG_IMAGEOPT=/d; /^# CONFIG_IMAGEOPT is not set/d; /^CONFIG_PREINITOPT=/d; /^# CONFIG_PREINITOPT is not set/d; /^CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=/d; /^CONFIG_TARGET_PREINIT_IP=/d; /^CONFIG_TARGET_PREINIT_BROADCAST=/d' .config
-cat >> .config <<'EOF'
-CONFIG_IMAGEOPT=y
-CONFIG_PREINITOPT=y
-CONFIG_TARGET_DEFAULT_LAN_IP_FROM_PREINIT=y
-CONFIG_TARGET_PREINIT_IP="192.168.5.3"
-CONFIG_TARGET_PREINIT_BROADCAST="192.168.5.255"
-EOF
-
 # 默认 shell 为 zsh
 [ ! -f package/base-files/files/etc/passwd ] || sed -i 's#/bin/ash#/usr/bin/zsh#g' package/base-files/files/etc/passwd
 
@@ -84,6 +74,40 @@ git clone --depth=1 https://github.com/vernesong/OpenClash package/openclash-luc
 # Themes
 git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
 git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/luci-app-argon-config
+
+# LuCI 一级菜单：网络存储 / Docker。官方 25.12 的 Dockerman 默认在“服务”下，KSMBD 需要补父菜单。
+mkdir -p package/base-files/files/usr/share/luci/menu.d
+cat > package/base-files/files/usr/share/luci/menu.d/99-tonylee-menu.json <<'EOF'
+{
+	"admin/nas": {
+		"title": "NAS",
+		"order": 45,
+		"action": { "type": "firstchild" }
+	},
+	"admin/docker": {
+		"title": "Docker",
+		"order": 46,
+		"action": { "type": "firstchild" }
+	}
+}
+EOF
+for dockerman_menu in \
+  feeds/luci/applications/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json \
+  package/feeds/luci/luci-app-dockerman/root/usr/share/luci/menu.d/luci-app-dockerman.json; do
+  [ ! -f "$dockerman_menu" ] || sed -i \
+    -e 's#admin/services/dockerman#admin/docker#g' \
+    -e 's#"title": "Dockerman JS"#"title": "Docker"#' \
+    -e 's#"title": "DockerMan"#"title": "Docker"#' \
+    "$dockerman_menu"
+done
+[ ! -f package/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css ] || sed -i 's#\.main-left \.nav li \.menu\[data-title="NAS"\]:before#.main-left .nav li .menu[data-title="NAS"]:before,.main-left .nav li .menu[data-title="网络存储"]:before#' package/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
+if [ -f feeds/luci/modules/luci-base/po/zh_Hans/base.po ] && ! grep -q '^msgid "NAS"$' feeds/luci/modules/luci-base/po/zh_Hans/base.po; then
+cat >> feeds/luci/modules/luci-base/po/zh_Hans/base.po <<'EOF'
+
+msgid "NAS"
+msgstr "网络存储"
+EOF
+fi
 
 # 在线用户
 git_sparse_clone main https://github.com/haiibo/packages luci-app-onliner

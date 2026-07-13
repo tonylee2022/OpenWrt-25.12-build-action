@@ -291,7 +291,8 @@ jobs:
             - 防火墙: firewall4 / nftables
             - 内核版本: ${{ env.KERNEL }}
             - 默认地址: 192.168.5.3
-            - 默认密码: password
+            - root / LuCI 默认密码: 空
+            - TTYD: root 自动登录
             ### 固件版本
             - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
             - ${{ env.COMMIT_AUTHOR }}
