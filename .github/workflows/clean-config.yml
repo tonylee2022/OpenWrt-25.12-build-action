@@ -48,6 +48,7 @@ jobs:
       - name: Install Feeds
         run: |
           cd $OPENWRT_PATH
+          sed -i -E '/^src-git(-full)? (telephony|video) /s/^/# disabled for config cleanup: /' feeds.conf.default
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
