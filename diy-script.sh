@@ -47,6 +47,8 @@ remove_paths \
 # kenzok8 插件：AdGuardHome 仅装 LuCI，核心由界面在线下载。
 git_sparse_clone main https://github.com/kenzok8/small-package \
   luci-app-adguardhome \
+  luci-app-quickstart \
+  quickstart \
   luci-theme-glass
 [ ! -f "$script_dir/patches/luci-theme-glass/po/zh_Hans/glass.po" ] || install -m 0644 "$script_dir/patches/luci-theme-glass/po/zh_Hans/glass.po" package/luci-theme-glass/po/zh_Hans/glass.po
 
@@ -75,7 +77,7 @@ git clone --depth=1 https://github.com/vernesong/OpenClash package/openclash-luc
 git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
 git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/luci-app-argon-config
 
-# LuCI 一级菜单：网络存储 / Docker。官方 25.12 的 Dockerman 默认在“服务”下，KSMBD 需要补父菜单。
+# LuCI 一级菜单：网络存储 / Docker。
 mkdir -p package/base-files/files/usr/share/luci/menu.d
 cat > package/base-files/files/usr/share/luci/menu.d/99-tonylee-menu.json <<'EOF'
 {
@@ -99,6 +101,22 @@ for dockerman_menu in \
     -e 's#"title": "Dockerman JS"#"title": "Docker"#' \
     -e 's#"title": "DockerMan"#"title": "Docker"#' \
     "$dockerman_menu"
+done
+for dockerman_common in \
+  feeds/luci/applications/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js \
+  package/feeds/luci/luci-app-dockerman/htdocs/luci-static/resources/dockerman/common.js; do
+  [ ! -f "$dockerman_common" ] || sed -i \
+    's#admin/services/dockerman#admin/docker#g' \
+    "$dockerman_common"
+done
+for nas_menu in \
+  feeds/luci/applications/luci-app-ksmbd/root/usr/share/luci/menu.d/luci-app-ksmbd.json \
+  package/feeds/luci/luci-app-ksmbd/root/usr/share/luci/menu.d/luci-app-ksmbd.json \
+  feeds/luci/applications/luci-app-transmission/root/usr/share/luci/menu.d/luci-app-transmission.json \
+  package/feeds/luci/luci-app-transmission/root/usr/share/luci/menu.d/luci-app-transmission.json; do
+  [ ! -f "$nas_menu" ] || sed -i \
+    's#admin/services/#admin/nas/#g' \
+    "$nas_menu"
 done
 [ ! -f package/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css ] || sed -i 's#\.main-left \.nav li \.menu\[data-title="NAS"\]:before#.main-left .nav li .menu[data-title="NAS"]:before,.main-left .nav li .menu[data-title="网络存储"]:before#' package/luci-theme-argon/htdocs/luci-static/argon/css/cascade.css
 if [ -f feeds/luci/modules/luci-base/po/zh_Hans/base.po ] && ! grep -q '^msgid "NAS"$' feeds/luci/modules/luci-base/po/zh_Hans/base.po; then
